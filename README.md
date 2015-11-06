@@ -11,7 +11,7 @@ Net::OSC is currently planned to consist of three classes:
 * Net::OSC::Message
 * Net::OSC::Bundle
 
-Net::OSC provides message routing behaviors for the OSC Protocol
+Net::OSC provides message routing behaviors for the OSC Protocol, an OSC address space,
 while Net::OSC::Message and Net::OSC::Bundle provide a representation of the data.
 
 ## Features
@@ -21,3 +21,4 @@ while Net::OSC::Message and Net::OSC::Bundle provide a representation of the dat
 * Net::OSC::Message pack and unpack methods
 * Net::OSC
 * Net::OSC::Bundle
+* Code examples
