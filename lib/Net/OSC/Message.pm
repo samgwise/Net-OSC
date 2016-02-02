@@ -16,10 +16,10 @@ class Net::OSC::Message {
   #Initial pack mappings sourced from the Protocol::OSC perl5 module
   # expanded with info from http://opensoundcontrol.org/spec-1_0
   my %pack-map =
-    i => 'N',           #int32
+    i => 'i',           #int32
     f => 'f',           #float32
-    s => 'A* x!4',      #OSC-string
-    S => 'A* x!4',      #OSC-string alternative
+    s => 's',           #OSC-string
+    S => 's',           #OSC-string alternative
     b => 'N/C* x!4',    #OSC-blob
     h => 'h',           #64 bit big-endian twos compliment integer
     t => 'N2',          #OSC-timetag
@@ -81,8 +81,8 @@ class Net::OSC::Message {
   method package() returns Buf {
     pack($message-prefix-packing,
       $.path,
-      ',', self.type-string()
-    ) ~ self!pack-args();
+      ',',
+    ) ~ "{ self.type-string() },".encode('ISO-8859-1') ~ self!pack-args();
   }
 
   method !pack-args() returns Buf {
@@ -92,6 +92,13 @@ class Net::OSC::Message {
       given %pack-map{$type} {
         when 'f' {
           take self.pack-float32($arg);
+        }
+        when 'i' {
+          take self.pack-int32($arg);
+        }
+        when 's' {
+          say "$arg => { pack('A*', $arg).perl }";
+          take pack('A*', $arg);      #null terminated string
         }
         default {
           take pack(%pack-map{$type}, $arg);
@@ -103,15 +110,85 @@ class Net::OSC::Message {
 
   #returns a new Message object
   method unpackage(Buf $packed-osc) {
-    my ($path, $type-string, $args-buf) = $packed-osc.unpack: $message-prefix-packing;
+    say $packed-osc.perl;
+    say "Buffer size {$packed-osc.elems}";
+    my $path = '';
+    my @types;
+    my @args;
+    my $read-pointer = 0;
+    my $buffer-width = 1;
+    my $comma-count = 0;
+    while $read-pointer < $packed-osc.elems {
+      if $comma-count == 0 {
+        my $char = $packed-osc.subbuf($read-pointer, $buffer-width).decode('ISO-8859-1');
+        say "$read-pointer => '$char'";
+        if $char eq ',' {
+          $comma-count++;
+        }
+        else {
+          $path ~= $char if $char;
+        }
+        $read-pointer += $buffer-width;
+      }
+      elsif $comma-count == 1 {
+        my $char = $packed-osc.subbuf($read-pointer, $buffer-width).decode('ISO-8859-1');
+        say "$read-pointer => '$char'";
+        if $char eq ',' {
+          $comma-count++;
+        }
+        else {
+          @types.push: $char if $char;
+        }
+        $read-pointer += $buffer-width;
+      }
+      else {
+        given @types.shift -> $type {
+          when $type eq 'f'|'d' {
+            say "parsing float32";
+            $buffer-width = 4;
+            my $buf = $packed-osc.subbuf($read-pointer, $buffer-width);
+            say "$read-pointer => { $buf.perl }";
+
+            $read-pointer += $buffer-width;
+          }
+          when $type eq 'i' {
+            say "parsing int32";
+            $buffer-width = 4;
+            my $buf = $packed-osc.subbuf($read-pointer, $buffer-width);
+            say "$read-pointer => { $buf.perl }";
+
+            @args.push: self.unpack-int32( $buf );
+            say "Int = @args[*-1]";
+            $read-pointer += $buffer-width;
+          }
+          when $type eq 's' {
+            say "parsing string";
+            $buffer-width = 1;
+            my $arg = '';
+            my $char;
+            repeat {
+              $char = $packed-osc.subbuf($read-pointer, $buffer-width);
+              say "$read-pointer => { $char.perl }";
+              last if $char[0] == 0;
+              $char .= decode('ISO-8859-1');
+              $arg ~= $char;
+              $read-pointer += $buffer-width;
+            } while $char.chars == $buffer-width and $read-pointer < $packed-osc.elems;
+            @args.push: $arg;
+            say "String = $arg"
+          }
+          default {
+            die "Unhandled type '$type'";
+          }
+        }
+      }
+    }
+
+    say "$path, @types[], @args[]";
 
     self.bless(
       :$path,
-      :args(
-        $args-buf.unpack: $type-string.substr(1).split('').map( {
-          %pack-map{$_}:e ?? %pack-map{$_} !! die "No pack-mapping defined for type '$_'"
-        } ).join('')
-      )
+      :@args
     );
   }
 
@@ -122,9 +199,31 @@ class Net::OSC::Message {
       ~ ($number.truncate.msb + 127).base(2)                                      #exponent     bit 30 - 23
       ~ ( ($number / 2**$number.truncate.msb).base(2) ~ (0 x 23) ).substr(2, 23)  #fraction     bit 22 - 0
     ).comb(/\d**8/);
-      say "$number => @bits[] ({ @bits.join('').chars })";
+    say "$number => @bits[] ({ @bits.join('').chars })";
 
     Buf.new( @bits.map: { EVAL "0b$_" } )
+  }
+
+  method pack-int32(Int(Cool) $number) returns Buf {
+    #binary = ($number / 2**$number.truncate.msb)
+    my @bits = (
+      sprintf( '%032d', $number.base(2) )
+    ).comb(/\d**8/);
+    say "$number => @bits[] ({ @bits.join('').chars })";
+
+    Buf.new( @bits.map: { EVAL "0b$_" } )
+  }
+
+  method unpack-float32(Buf $bits) {
+
+  }
+
+  method unpack-int32(Buf $bits) returns Int {
+    my $bit-string = '';
+    for 0..3 {
+      $bit-string ~= $bits[$_].base(2);
+    }
+    EVAL "0b$bit-string";
   }
 
 }

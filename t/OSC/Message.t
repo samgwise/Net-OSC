@@ -31,11 +31,11 @@ diag "package tests:";
 
 is $message.pack-float32(12.375).perl, Buf.new(65, 70, 0, 0).perl, "pack 12.375";
 
-my $packed-message;
+my Buf $packed-message;
 lives-ok  { $packed-message = $message.package; },                          "package message";
 
 my Net::OSC::Message $post-pack-message;
-lives-ok  { $post-pack-message .= unpackage($message.package); },           "unpackage message";
+lives-ok  { $post-pack-message .= unpackage($packed-message); },           "unpackage message";
 
 is        $post-pack-message.path,         $post-pack-message.path,         "post pack path";
 
