@@ -1,4 +1,5 @@
 use v6;
+use experimental :pack;
 
 class Net::OSC::Message {
   subset OSCPath of Str where { $_.substr-eq('/', 0) }
@@ -82,7 +83,7 @@ class Net::OSC::Message {
     pack($message-prefix-packing,
       $.path,
       ',',
-    ) ~ "{ self.type-string() },".encode('ISO-8859-1') ~ self!pack-args();
+    ) ~ "{ self.type-string() }\0".encode('ISO-8859-1') ~ self!pack-args();
   }
 
   method !pack-args() returns Buf {
@@ -118,27 +119,27 @@ class Net::OSC::Message {
     my @args;
     my $read-pointer = 0;
     my $buffer-width = 1;
-    my $comma-count = 0;
+    my $message-part = 0; # 0 = path, 1 = type string, 2 = args
     while $read-pointer < $packed-osc.elems {
       say '-' x 42;
       say "Read pointer: $read-pointer/{ $packed-osc.elems - 1 }";
-      if $comma-count == 0 {
+      if $message-part == 0 {
         my $char = $packed-osc.subbuf($read-pointer, $buffer-width).decode('ISO-8859-1');
-        if $char eq ',' {
-          $comma-count++;
+        if $char eq "\0" {
+          $message-part++;
         }
         else {
           $path ~= $char if $char;
         }
         $read-pointer += $buffer-width;
       }
-      elsif $comma-count == 1 {
+      elsif $message-part == 1 {
         my $char = $packed-osc.subbuf($read-pointer, $buffer-width).decode('ISO-8859-1');
-        if $char eq ',' {
-          $comma-count++;
+        if $char eq "\0" {
+          $message-part++;
         }
         else {
-          @types.push: $char if $char;
+          @types.push: $char if $char and $char ne ','; #why is the comma a part of this spec?
         }
         $read-pointer += $buffer-width;
       }
