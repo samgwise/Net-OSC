@@ -20,9 +20,9 @@ is $message.args, <Hey 123 45.67>, "get args";
 
 is $message.type-string, 'sid', "build type-string";
 
-ok $message.args('xyz', 987, 65.43), "Add args to message";
+ok $message.args('xyz', -987, -65.43), "Add args to message";
 
-is $message.args, <Hey 123 45.67 xyz 987 65.43>, "get args post addition";
+is $message.args, <Hey 123 45.67 xyz -987 -65.43>, "get args post addition";
 
 is $message.type-string, 'sidsid', "build type-string post addition";
 

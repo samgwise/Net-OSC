@@ -97,7 +97,9 @@ class Net::OSC::Message {
           take self.pack-int32($arg);
         }
         when 's' {
-          take pack('A*', $arg);      #null terminated string
+          #take pack('A*', $arg);      #null terminated string
+          #take Buf.new($arg.encode('ISO-8859-1').subbuf(0, $arg.chars), 0);
+          take ($arg ~ "\0").encode('ISO-8859-1')
         }
         default {
           take pack(%pack-map{$type}, $arg);
@@ -109,6 +111,8 @@ class Net::OSC::Message {
 
   #returns a new Message object
   method unpackage(Buf $packed-osc) {
+    say "Unpacking message of {$packed-osc.elems} byte(s):";
+    say $packed-osc.map( { sprintf('%4s', $_.base(16)) } ).rotor(8, :partial).join("\n");
     my $path = '';
     my @types;
     my @args;
@@ -116,6 +120,8 @@ class Net::OSC::Message {
     my $buffer-width = 1;
     my $comma-count = 0;
     while $read-pointer < $packed-osc.elems {
+      say '-' x 42;
+      say "Read pointer: $read-pointer/{ $packed-osc.elems - 1 }";
       if $comma-count == 0 {
         my $char = $packed-osc.subbuf($read-pointer, $buffer-width).decode('ISO-8859-1');
         if $char eq ',' {
@@ -152,16 +158,18 @@ class Net::OSC::Message {
             $read-pointer += $buffer-width;
           }
           when $type eq 's' {
+            say "Unpacking string";
             $buffer-width = 1;
             my $arg = '';
             my $char;
             repeat {
               $char = $packed-osc.subbuf($read-pointer, $buffer-width);
+              $read-pointer += $buffer-width;
               last if $char[0] == 0;
               $char .= decode('ISO-8859-1');
               $arg ~= $char;
-              $read-pointer += $buffer-width;
             } while $char.chars == $buffer-width and $read-pointer < $packed-osc.elems;
+            say "'$arg'";
             @args.push: $arg;
           }
           default {
@@ -178,43 +186,75 @@ class Net::OSC::Message {
   }
 
   method pack-float32(Numeric(Cool) $number) returns Buf {
+    say "packing $number as float32";
     #binary = ($number / 2**$number.truncate.msb)
+    # my @bits = (
+    #     ($number.sign == -1 ?? 1 !! 0)                                            #sign         bit 31
+    #   ~ ($number.truncate.msb + 127).base(2)                                      #exponent     bit 30 - 23
+    #   ~ ( ($number / 2**$number.truncate.msb).base(2) ~ (0 x 23) ).substr(2, 23)  #fraction     bit 22 - 0
+    # ).comb;
+
+    my $fraction = ($number - $number.truncate).substr( $number.sign == -1 ?? 3 !! 2 ).Int;
+    say "fraction: $fraction, msb: { $number.truncate.msb }.{ $fraction.msb }";
     my @bits = (
         ($number.sign == -1 ?? 1 !! 0)                                            #sign         bit 31
-      ~ ($number.truncate.msb + 127).base(2)                                      #exponent     bit 30 - 23
-      ~ ( ($number / 2**$number.truncate.msb).base(2) ~ (0 x 23) ).substr(2, 23)  #fraction     bit 22 - 0
-    ).comb(/\d**8/);
+      ~ (($number.truncate.msb + 127).base(2) ~ (0 x 8)).substr(0, 8)                                      #exponent     bit 30 - 23
+      ~ ( ($number / 2**$number.truncate.msb).base(2) ~ (0 x 23) ).substr( ($number.sign == -1 ?? 3 !! 2), 23 )  #fraction     bit 22 - 0
+    ).comb;
 
-    Buf.new( @bits.map: { EVAL "0b$_" } )
+    say @bits;
+
+    self.bits2buf(@bits);
   }
 
   method pack-int32(Int(Cool) $number) returns Buf {
-    my @bits = (
-      sprintf( '%032d', $number.base(2) )
-    ).comb(/\d**8/);
+    self.pack-int($number, 32);
+  }
 
-    Buf.new( @bits.map: { EVAL "0b$_" } )
+  method pack-int(Int $value, Int $bit-width = 32, Bool :$signed = True) returns Buf {
+    say "Packing $value to a { $signed ?? "signed" !! "unsigned" } {$bit-width}bit int";
+    my @bits = (
+      ($signed ?? ($value.sign == -1 ?? 1 !! 0) !! '')
+      ~
+      sprintf( "\%0{ $signed ?? $bit-width - 1 !! $bit-width }d", $value.abs.base(2) )
+    ).comb;
+
+    say "$value → { @bits.rotor(8)».join: '' }";
+
+    self.bits2buf(@bits);
   }
 
   method unpack-float32(Buf $bits) {
     my $bin = self.buf2bin($bits);
+    say "unpacking float32: { $bin.rotor(8)».join: '' }";
 
-    (-1) ** $bin[0]                                       #sign       bit 31
-    *
-    (1 + self.unpack-int($bin[9..$bin.end]) * 2**-23)     #significand (fraction) 22-0
-    *
-    2 ** ( self.unpack-int($bin[1..8]) - 127 );           #exponent     bit 30 - 23
+    my $total = (
+      (-1) ** $bin[0]                                       #sign       bit 31
+      *
+      (1 + self.unpack-int($bin[9..$bin.end], :signed(False)) * 2**-23)     #significand (fraction) 22-0
+      *
+      2 ** ( self.unpack-int($bin[1..8], :signed(False)) - 127 )             #exponent     bit 30 - 23
+    ) + ($bin[0].sign == 1 ?? 128 !! 0);
+    say $total;
+    $total
   }
 
   method unpack-int32(Buf $bits) returns Int {
     self.unpack-int: self.buf2bin($bits);
   }
 
-  method unpack-int(@bits) returns Int {
+  method unpack-int(@bits, Bool :$signed = True) returns Int {
+    say "Unpacking { $signed ?? "signed" !! "unsigned" } int { @bits.perl } { @bits.elems }";
     my Int $total = 0;
-    for 0..@bits.end -> $i {
-      $total += Int(@bits[$i] * (2 ** (@bits.end - $i)));
+    for ($signed ?? 1 !! 0)..@bits.end -> $i {
+      if !$signed or @bits[0] == 0 {
+        $total += Int(@bits[$i] * (2 ** (@bits.end - $i)));
+      }
+      else {
+        $total -= Int(@bits[$i] * (2 ** (@bits.end - $i)));
+      }
     }
+    say $total;
     $total;
   }
 
@@ -224,6 +264,10 @@ class Net::OSC::Message {
       @bin.push: |sprintf( '%08d', $bits[$_].base(2) ).comb;
     }
     @bin
+  }
+
+  method bits2buf(@bits) returns Buf {
+    Buf.new: @bits.rotor(8).map: { self.unpack-int($_, :signed(False)) };
   }
 
 }
