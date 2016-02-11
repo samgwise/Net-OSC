@@ -34,7 +34,7 @@ class Net::OSC::Message {
   has Str     @!type-list   = Nil;
   has         @!args;
 
-  submethod BUILD(:@!args) {
+  submethod BUILD(:@!args, :$!path = '/') {
      self!update-type-list(@!args);
   }
 
@@ -80,13 +80,12 @@ class Net::OSC::Message {
   }
 
   method package() returns Buf {
-    pack($message-prefix-packing,
-      $.path,
-      ',',
-    ) ~ "{ self.type-string() }\0".encode('ISO-8859-1') ~ self!pack-args();
+      self.pack-string($!path)
+      ~ self.pack-string(",{ self.type-string() }")
+      ~ self!pack-args();
   }
 
-  method !pack-args() returns Buf {
+  method !pack-args() returns Blob {
     [~] gather for @!args Z @!type-list -> ($arg, $type) {
       #say "Packing '$arg' of OSC type '$type' with pattern '%pack-map{$type}'";
 
@@ -98,9 +97,7 @@ class Net::OSC::Message {
           take self.pack-int32($arg);
         }
         when 's' {
-          #take pack('A*', $arg);      #null terminated string
-          #take Buf.new($arg.encode('ISO-8859-1').subbuf(0, $arg.chars), 0);
-          take ($arg ~ "\0").encode('ISO-8859-1')
+          take self.pack-string($arg);
         }
         default {
           take pack(%pack-map{$type}, $arg);
@@ -120,62 +117,52 @@ class Net::OSC::Message {
     my $read-pointer = 0;
     my $buffer-width = 1;
     my $message-part = 0; # 0 = path, 1 = type string, 2 = args
-    while $read-pointer < $packed-osc.elems {
-      say '-' x 42;
-      say "Read pointer: $read-pointer/{ $packed-osc.elems - 1 }";
-      if $message-part == 0 {
-        my $char = $packed-osc.subbuf($read-pointer, $buffer-width).decode('ISO-8859-1');
-        if $char eq "\0" {
-          $message-part++;
-        }
-        else {
-          $path ~= $char if $char;
-        }
-        $read-pointer += $buffer-width;
-      }
-      elsif $message-part == 1 {
-        my $char = $packed-osc.subbuf($read-pointer, $buffer-width).decode('ISO-8859-1');
-        if $char eq "\0" {
-          $message-part++;
-        }
-        else {
-          @types.push: $char if $char and $char ne ','; #why is the comma a part of this spec?
-        }
-        $read-pointer += $buffer-width;
-      }
-      else {
-        given @types.shift -> $type {
-          when $type eq 'f'|'d' {
-            $buffer-width = 4;
-            my $buf = $packed-osc.subbuf($read-pointer, $buffer-width);
-            @args.push: self.unpack-float32( $buf );
-            $read-pointer += $buffer-width;
-          }
-          when $type eq 'i' {
-            $buffer-width = 4;
-            my $buf = $packed-osc.subbuf($read-pointer, $buffer-width);
 
-            @args.push: self.unpack-int32( $buf );
-            $read-pointer += $buffer-width;
+    #Closure for string parsing, operates on this scope of variables
+    my $extract-string = sub {
+      say "Unpacking string";
+      $buffer-width = 4;
+      my $arg = '';
+      my $chars;
+      repeat {
+        $chars = $packed-osc.subbuf($read-pointer, $buffer-width);
+        $read-pointer += $buffer-width;
+        for $chars.decode('ISO-8859-1').comb -> $char {
+          if $char eq "\0" {
+            $buffer-width = 0; #signal end of string
+            last;
           }
-          when $type eq 's' {
-            say "Unpacking string";
-            $buffer-width = 1;
-            my $arg = '';
-            my $char;
-            repeat {
-              $char = $packed-osc.subbuf($read-pointer, $buffer-width);
-              $read-pointer += $buffer-width;
-              last if $char[0] == 0;
-              $char .= decode('ISO-8859-1');
-              $arg ~= $char;
-            } while $char.chars == $buffer-width and $read-pointer < $packed-osc.elems;
-            say "'$arg'";
-            @args.push: $arg;
-          }
-          default {
-            die "Unhandled type '$type'";
-          }
+          $arg ~= $char;
+        }
+      } while $buffer-width == 4 and $read-pointer < $packed-osc.elems;
+      say "'$arg'";
+      $arg;
+    }
+
+    #start parse
+    $path = $extract-string.();
+    @types = $extract-string.().comb: /\w/; #extract type chars and ignore the ','
+
+    while $read-pointer < $packed-osc.elems {
+      given @types.shift -> $type {
+        when $type eq 'f'|'d' {
+          $buffer-width = 4;
+          my $buf = $packed-osc.subbuf($read-pointer, $buffer-width);
+          @args.push: self.unpack-float32( $buf );
+          $read-pointer += $buffer-width;
+        }
+        when $type eq 'i' {
+          $buffer-width = 4;
+          my $buf = $packed-osc.subbuf($read-pointer, $buffer-width);
+
+          @args.push: self.unpack-int32( $buf );
+          $read-pointer += $buffer-width;
+        }
+        when $type eq 's' {
+          @args.push: $extract-string.();
+        }
+        default {
+          die "Unhandled type '$type'";
         }
       }
     }
@@ -271,4 +258,7 @@ class Net::OSC::Message {
     Buf.new: @bits.rotor(8).map: { self.unpack-int($_, :signed(False)) };
   }
 
+  method pack-string(Str $string) returns Blob {
+    ( $string ~ ( "\0" x 4 - ( $string.chars % 4) ) ).encode('ISO-8859-1')
+  }
 }
