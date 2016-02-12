@@ -3,7 +3,7 @@ use Test;
 use lib 'lib';
 use Net::OSC::Message;
 
-plan 17;
+plan 19;
 
 #diag Net::OSC::Message.^methods.map({ $_.perl }).join: "\n";
 
@@ -51,3 +51,14 @@ for $post-pack-message.args.kv -> $k, $v {
 }
 
 is        $post-pack-message.type-string,  $message.type-string,  "post pack type-string";
+
+#test 32bit mode
+my Net::OSC::Message $message32;
+lives-ok {
+  $message32 .= new(
+    :args<Hey 123 45.67>
+    :is64bit(False)
+  );
+}, "Instantiate 32bit message";
+
+is $message32.type-string, 'sif', "Rat is type f in 32bit message";

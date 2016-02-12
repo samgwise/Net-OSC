@@ -2,9 +2,19 @@ use v6;
 #use experimental :pack;
 
 class Net::OSC::Message {
-  subset OSCPath of Str where { $_.substr-eq('/', 0) }
+  subset OSCPath of Str where *.substr-eq('/', 0);
 
-  my %type-map =
+  my %type-map32 =
+    Int.^name,    'i',
+    IntStr.^name, 'i',
+    Num.^name,    'f',
+    Rat.^name,    'f',
+    RatStr.^name, 'f',
+    FatRat.^name, 'f',
+    Str.^name,    's',
+    Blob.^name,   'b',
+  ;
+  my %type-map64 =
     Int.^name,    'i',
     IntStr.^name, 'i',
     Num.^name,    'd',
@@ -26,15 +36,13 @@ class Net::OSC::Message {
     #t => 'N2',          #OSC-timetag
     d => 'd',           #64 bit ("double") IEEE 754 floating point number
   ;
-  my      $message-prefix-packing  = '(A*x!4)2A*';
-  my Int  $max-float-sp-fraction   = 2**23 - 1;      #0b11111111111111111111111 or 2**23 - 1 = 8388607
-  my Int  $max-float-sp            = 2**32 - 1;
 
   has OSCPath $.path        = '/';
   has Str     @!type-list   = Nil;
   has         @!args;
+  has Bool    $.is64bit    = True;
 
-  submethod BUILD(:@!args, :$!path = '/') {
+  submethod BUILD(:@!args, :$!path = '/', :$!is64bit = True) {
      self!update-type-list(@!args);
   }
 
@@ -44,8 +52,9 @@ class Net::OSC::Message {
 
   method pick-osc-type($arg) {
     #say "Choosing type for $arg of type {$arg.WHAT.perl}";
-    if $arg.WHAT.perl ~~ %type-map {
-      return %type-map{$arg.WHAT.perl};
+    my $type-map = $!is64bit ?? %type-map64 !! %type-map32;
+    if $arg.WHAT.perl ~~ $type-map {
+      return $type-map{$arg.WHAT.perl};
     }
     else {
       die "Unable to map $arg of type { $arg.perl } to OSC type!";
@@ -76,7 +85,7 @@ class Net::OSC::Message {
   }
 
   method type-map() {
-    %type-map.pairs;
+    ($!is64bit ?? %type-map64 !! %type-map32).pairs;
   }
 
   method package() returns Buf {
