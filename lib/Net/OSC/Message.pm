@@ -206,18 +206,18 @@ class Net::OSC::Message {
   }
 
   method unpack-float32(Buf $bits) {
-    my $bin = self.buf2bin($bits);
-    say "unpacking float32: { $bin.rotor(8)».join: '' }";
+    self!unpack-floating-point(8, 23, $bits);
+  }
 
-    my $total = (
-      (-1) ** $bin[0]                                       #sign       bit 31
+  method !unpack-floating-point(Int $exponent, Int $fraction, Buf $bits) {
+    my $bin = self.buf2bin($bits);
+    (
+      (-1) ** $bin[0]                                                       #sign
       *
-      (1 + self.unpack-int($bin[9..$bin.end], :signed(False)) * 2**-23)     #significand (fraction) 22-0
+      (1 + self.unpack-int($bin[($exponent + 1)..$bin.end], :signed(False)) * 2**($fraction * -1))     #significand (fraction) 22-0
       *
-      2 ** ( self.unpack-int($bin[1..8], :signed(False)) - 127 )             #exponent     bit 30 - 23
-    ) + ($bin[0].sign == 1 ?? 128 !! 0);
-    say $total;
-    $total
+      2 ** ( self.unpack-int($bin[1..$exponent], :signed(False)) - ((2**($exponent - 1)) - 1) )             #exponent     bit 30 - 23
+    ) + ($bin[0].sign == 1 ?? (2**($exponent - 1)) !! 0);
   }
 
   method unpack-int32(Buf $bits) returns Int {
