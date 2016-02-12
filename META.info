@@ -9,5 +9,5 @@
       "Net::OSC::Bundle"  : "lib/Net/OSC/Bundle.pm",
   },
   "depends" : [ ],
-  "source-url" : "git://https://github.com/samgwise/Net-OSC.git"
+  "source-url" : "git://github.com/samgwise/Net-OSC.git"
 }
