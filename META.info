@@ -9,7 +9,7 @@
       "Net::OSC::Message" : "lib/Net/OSC/Message.pm",
       "Net::OSC::Bundle"  : "lib/Net/OSC/Bundle.pm"
   },
-  "depends"       : [ ],
+  "depends" : [ ],
   "test-depends" : [ "Test" ],
-  "source-url"    : "git://https://github.com/samgwise/Net-OSC.git"
+  "source-url" : "git://github.com/samgwise/Net-OSC.git"
 }
