@@ -6,8 +6,11 @@ my Net::OSC::Message $osc-message .= new;
 
 my $udp-listener = IO::Socket::Async.bind-udp('localhost', 7654);
 my $listener-cb = $udp-listener.Supply(:bin).tap: -> $buf {
-  my $message = $osc-message.unpackage($buf);
-  say "message: { $message.path, $message.type-string, $message.args }";
+  if $buf.elems > 0 {
+    my $message = $osc-message.unpackage($buf);
+    say "message: { $message.path, $message.type-string, $message.args }";
+  }
+  #else empty packet
 }
 
 my $sender = start {
