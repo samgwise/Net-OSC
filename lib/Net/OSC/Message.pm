@@ -112,8 +112,8 @@ class Net::OSC::Message {
 
   #returns a new Message object
   method unpackage(Buf $packed-osc) {
-    say "Unpacking message of {$packed-osc.elems} byte(s):";
-    say $packed-osc.map( { sprintf('%4s', $_.base(16)) } ).rotor(8, :partial).join("\n");
+    #say "Unpacking message of {$packed-osc.elems} byte(s):";
+    #say $packed-osc.map( { sprintf('%4s', $_.base(16)) } ).rotor(8, :partial).join("\n");
     my $path = '';
     my @types;
     my @args;
@@ -123,7 +123,7 @@ class Net::OSC::Message {
 
     #Closure for string parsing, operates on this scope of variables
     my $extract-string = sub {
-      say "Unpacking string";
+      #say "Unpacking string";
       $buffer-width = 4;
       my $arg = '';
       my $chars;
@@ -138,7 +138,7 @@ class Net::OSC::Message {
           $arg ~= $char;
         }
       } while $buffer-width == 4 and $read-pointer < $packed-osc.elems;
-      say "'$arg'";
+      #say "'$arg'";
       $arg;
     }
 
@@ -206,16 +206,24 @@ class Net::OSC::Message {
   }
 
   method pack-int(Int $value, Int $bit-width = 32, Bool :$signed = True) returns Buf {
-    say "Packing $value to a { $signed ?? "signed" !! "unsigned" } {$bit-width}bit int";
-    my @bits = (
-      ($signed ?? ($value.sign == -1 ?? 1 !! 0) !! '')
-      ~
-      sprintf( "\%0{ $signed ?? $bit-width - 1 !! $bit-width }d", $value.abs.base(2) )
-    ).comb;
+    # #say "Packing $value to a { $signed ?? "signed" !! "unsigned" } {$bit-width}bit int";
+    # my @bits = (
+    #   ($signed ?? ($value.sign == -1 ?? 1 !! 0) !! '')
+    #   ~
+    #   sprintf( "\%0{ $signed ?? $bit-width - 1 !! $bit-width }d", $value.abs.base(2) )
+    # ).comb;
+    #
+    # #say "$value → { @bits.rotor(8)».join: '' }";
+    #
+    # self.bits2buf(@bits);
 
-    say "$value → { @bits.rotor(8)».join: '' }";
-
-    self.bits2buf(@bits);
+    self.bits2buf(
+      (
+        ($signed ?? ($value.sign == -1 ?? 1 !! 0) !! '')
+        ~
+        sprintf( "\%0{ $signed ?? $bit-width - 1 !! $bit-width }d", $value.abs.base(2) )
+      ).comb
+    )
   }
 
   method unpack-float32(Buf $bits) {
@@ -243,7 +251,7 @@ class Net::OSC::Message {
   }
 
   method unpack-int(@bits, Bool :$signed = True) returns Int {
-    say "Unpacking { $signed ?? "signed" !! "unsigned" } int { @bits.perl } { @bits.elems }";
+    #say "Unpacking { $signed ?? "signed" !! "unsigned" } int { @bits.perl } { @bits.elems }";
     my Int $total = 0;
     for ($signed ?? 1 !! 0)..@bits.end -> $i {
       if !$signed or @bits[0] == 0 {
@@ -253,7 +261,7 @@ class Net::OSC::Message {
         $total -= Int(@bits[$i] * (2 ** (@bits.end - $i)));
       }
     }
-    say $total;
+    #say $total;
     $total;
   }
 
