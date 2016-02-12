@@ -42,7 +42,7 @@ is        $post-pack-message.path,         $message.path,         "post pack pat
 for $post-pack-message.args.kv -> $k, $v {
   given $v -> $value {
     when $value ~~ Rat {
-      ok        ($value > $message.args[$k]-0.1 and $value < $message.args[$k]+0.1),     "post pack Rat arg\[$k]";
+      ok        ($value > $message.args[$k]-0.1 and $value < $message.args[$k]+0.1),     "post pack Rat arg\[$k], $value ~=~ { $message.args[$k] }";
     }
     default {
       is        $value,                    $message.args[$k],     "post pack arg\[$k]";

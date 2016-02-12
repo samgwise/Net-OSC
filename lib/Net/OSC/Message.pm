@@ -21,10 +21,10 @@ class Net::OSC::Message {
     f => 'f',           #float32
     s => 's',           #OSC-string
     S => 's',           #OSC-string alternative
-    b => 'N/C* x!4',    #OSC-blob
-    h => 'h',           #64 bit big-endian twos compliment integer
-    t => 'N2',          #OSC-timetag
-    d => 'f',           #64 bit ("double") IEEE 754 floating point number
+    #b => 'N/C* x!4',    #OSC-blob
+    #h => 'h',           #64 bit big-endian twos compliment integer
+    #t => 'N2',          #OSC-timetag
+    d => 'd',           #64 bit ("double") IEEE 754 floating point number
   ;
   my      $message-prefix-packing  = '(A*x!4)2A*';
   my Int  $max-float-sp-fraction   = 2**23 - 1;      #0b11111111111111111111111 or 2**23 - 1 = 8388607
@@ -93,6 +93,9 @@ class Net::OSC::Message {
         when 'f' {
           take self.pack-float32($arg);
         }
+        when 'd' {
+          take self.pack-double($arg);
+        }
         when 'i' {
           take self.pack-int32($arg);
         }
@@ -145,10 +148,16 @@ class Net::OSC::Message {
 
     while $read-pointer < $packed-osc.elems {
       given @types.shift -> $type {
-        when $type eq 'f'|'d' {
+        when $type eq 'f' {
           $buffer-width = 4;
           my $buf = $packed-osc.subbuf($read-pointer, $buffer-width);
           @args.push: self.unpack-float32( $buf );
+          $read-pointer += $buffer-width;
+        }
+        when $type eq 'd' {
+          $buffer-width = 8;
+          my $buf = $packed-osc.subbuf($read-pointer, $buffer-width);
+          @args.push: self.unpack-double( $buf );
           $read-pointer += $buffer-width;
         }
         when $type eq 'i' {
@@ -175,6 +184,10 @@ class Net::OSC::Message {
 
   method pack-float32(Numeric(Cool) $number) returns Buf {
     self!floating-point-packer(8, 23, $number);
+  }
+
+  method pack-double(Numeric(Cool) $number) returns Buf {
+    self!floating-point-packer(11, 52, $number);
   }
 
   #! generalised float packer routine. Use args(8, 23, $r) to pack a float 32 value or args(11, 52, $r) for a double etc...
@@ -209,15 +222,20 @@ class Net::OSC::Message {
     self!unpack-floating-point(8, 23, $bits);
   }
 
+  method unpack-double(Buf $bits) {
+    self!unpack-floating-point(11, 52, $bits);
+  }
+
+  #! generalised float unpacker routine. Use args(8, 23, $r) to pack a float 32 value or args(11, 52, $r) for a double etc...
   method !unpack-floating-point(Int $exponent, Int $fraction, Buf $bits) {
     my $bin = self.buf2bin($bits);
     (
-      (-1) ** $bin[0]                                                       #sign
+      (-1) ** $bin[0]                                                                                  #sign
       *
-      (1 + self.unpack-int($bin[($exponent + 1)..$bin.end], :signed(False)) * 2**($fraction * -1))     #significand (fraction) 22-0
+      (1 + self.unpack-int($bin[($exponent + 1)..$bin.end], :signed(False)) * 2**($fraction * -1))     #significand (fraction)
       *
-      2 ** ( self.unpack-int($bin[1..$exponent], :signed(False)) - ((2**($exponent - 1)) - 1) )             #exponent     bit 30 - 23
-    ) + ($bin[0].sign == 1 ?? (2**($exponent - 1)) !! 0);
+      2 ** ( self.unpack-int($bin[1..$exponent], :signed(False)) - ((2**($exponent - 1)) - 1) )        #exponent
+    ) + ($bin[0].sign == 1 ?? 128 !! 0);
   }
 
   method unpack-int32(Buf $bits) returns Int {
