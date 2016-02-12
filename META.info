@@ -1,6 +1,6 @@
 {
   "name" : "Net::OSC",
-  "version" : "*",
+  "version" : "0.001",
   "description" : "A perl6 implementation of the Open Sound Control Protocol.",
   "author" : "Sam Gillespie",
   "provides" : {

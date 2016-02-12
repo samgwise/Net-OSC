@@ -3,6 +3,7 @@ use Test;
 use lib 'lib';
 use Net::OSC;
 
-plan 1;
+plan 0;
 
-lives-ok {  }, "use Net::OSC";
+# lives-ok {  }, "use Net::OSC";
+skip-rest "Skipping basic test, not yet implimented";
