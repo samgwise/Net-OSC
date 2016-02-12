@@ -1,5 +1,5 @@
 use v6;
-use experimental :pack;
+#use experimental :pack;
 
 class Net::OSC::Message {
   subset OSCPath of Str where { $_.substr-eq('/', 0) }
@@ -174,25 +174,18 @@ class Net::OSC::Message {
   }
 
   method pack-float32(Numeric(Cool) $number) returns Buf {
-    say "packing $number as float32";
-    #binary = ($number / 2**$number.truncate.msb)
-    # my @bits = (
-    #     ($number.sign == -1 ?? 1 !! 0)                                            #sign         bit 31
-    #   ~ ($number.truncate.msb + 127).base(2)                                      #exponent     bit 30 - 23
-    #   ~ ( ($number / 2**$number.truncate.msb).base(2) ~ (0 x 23) ).substr(2, 23)  #fraction     bit 22 - 0
-    # ).comb;
+    self!floating-point-packer(8, 23, $number);
+  }
 
-    my $fraction = ($number - $number.truncate).substr( $number.sign == -1 ?? 3 !! 2 ).Int;
-    say "fraction: $fraction, msb: { $number.truncate.msb }.{ $fraction.msb }";
-    my @bits = (
-        ($number.sign == -1 ?? 1 !! 0)                                            #sign         bit 31
-      ~ (($number.truncate.msb + 127).base(2) ~ (0 x 8)).substr(0, 8)                                      #exponent     bit 30 - 23
-      ~ ( ($number / 2**$number.truncate.msb).base(2) ~ (0 x 23) ).substr( ($number.sign == -1 ?? 3 !! 2), 23 )  #fraction     bit 22 - 0
-    ).comb;
-
-    say @bits;
-
-    self.bits2buf(@bits);
+  #! generalised float packer routine. Use args(8, 23, $r) to pack a float 32 value or args(11, 52, $r) for a double etc...
+  method !floating-point-packer(Int $exponent, Int $fraction, Numeric(Cool) $number) returns Buf {
+    self.bits2buf(
+      (
+          ($number.sign == -1 ?? 1 !! 0)                                                                                         #sign
+        ~ ( ( $number.truncate.msb + ((2**($exponent - 1)) - 1) ).base(2) ~ (0 x $exponent) ).substr(0, $exponent)               #exponent
+        ~ ( ($number / 2**$number.truncate.msb).base(2) ~ (0 x $fraction) ).substr( ($number.sign == -1 ?? 3 !! 2), $fraction )  #fraction
+      ).comb
+    );
   }
 
   method pack-int32(Int(Cool) $number) returns Buf {
