@@ -16,8 +16,6 @@
   },
   "resources" : [ ],
   "source-url" : "git://github.com/samgwise/Net-OSC.git",
-  "test-depends" : [
-    "Test"
-  ],
+  "test-depends" : [ ],
   "version" : "0.1.0"
 }
