@@ -1,6 +1,7 @@
 use v6;
 
 unit class Net::OSC::Message;
+use Net::OSC::Types;
 
 =begin pod
 
@@ -13,8 +14,6 @@ Net::OSC::Message - Impliments OSC message packing and unpacking
 =end pod
 
 use Numeric::Pack :ALL;
-
-subset OSCPath of Str where *.substr-eq('/', 0);
 
 my %type-map32 =
   Int.^name,    'i',
@@ -224,7 +223,7 @@ method unpackage(Buf $packed-osc)
 }
 
 method buf2bin(Buf $bits) returns Array
-#= Returns an binary array of the content of a Buf. Useful for debugging.
+#= Returns a binary array of the content of a Buf. Useful for debugging.
 {
   my @bin;
   for 0 .. ($bits.elems - 1) {
