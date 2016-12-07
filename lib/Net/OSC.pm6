@@ -1,6 +1,8 @@
 use v6;
 
-unit class Net::OSC ;
+unit module Net::OSC;
+use Net::OSC::Server::UDP;
+use Net::OSC::Types;
 
 =begin pod
 
@@ -57,8 +59,7 @@ Net::OSC is currently planned to consist of the following classes:
 =item Net::OSC
 =item Net::OSC::Message - Implimented
 =item Net::OSC::Bundle
-=item Net::OSC::Client
-=item Net::OSC::Server
+=item Net::OSC::Server - UDP Implimented
 
 Net::OSC provides message routing behaviors for the OSC Protocol, an OSC address space.
 Net::OSC::Message and Net::OSC::Bundle provide a representation  and packaing of the data.
@@ -92,10 +93,15 @@ This library is free software; you can redistribute it and/or modify it under th
 
 =end pod
 
-method pack-message(*@args) returns Buf {
-
+sub EXPORT {
+    {
+     'Net::OSC::Server::UDP' => Net::OSC::Server::UDP,
+    }
 }
 
-method unpack-message(Blob:D $message) returns List:D {
-
+multi sub action(Regex $path, Callable $call-back --> ActionTuple) is export {
+  $($path, $call-back)
+}
+multi sub action(OSCPath $path, Callable $call-back --> ActionTuple) is export {
+  $(regex { ^ $path $ }, $call-back)
 }

@@ -13,7 +13,7 @@ has Int               $.listening-port;
 has Str               $.send-to-address is rw;
 has Int               $.send-to-port is rw;
 
-submethod BUILD(:$!listening-address, :$!listening-port, :$!send-to-address, :$!send-to-port, :@actions) {
+submethod BUILD(:$!listening-address, :$!listening-port, :$!send-to-address, :$!send-to-port, :$!is64bit = True, :@actions) {
   self.add-actions(@actions);
   self!listen;
 }
@@ -25,6 +25,7 @@ method send(OSCPath $path, *%args) {
       Net::OSC::Message.new(
         :$path
         :args( (%args<args>:exists and %args<args>.defined) ?? %args<args> !! () )
+        :is64bit($!is64bit)
       ),
       (%args<address>:exists ?? %args<address> !! $!send-to-address),
       (%args<port>:exists    ?? %args<port>    !! $!send-to-port)
@@ -35,6 +36,7 @@ method send(OSCPath $path, *%args) {
       Net::OSC::Message.new(
         :$path
         :args( (%args<args>:exists and %args<args>.defined) ?? %args<args> !! () )
+        :is64bit($!is64bit)
       )
     )
   }

@@ -5,6 +5,7 @@ use Net::OSC::Message;
 use Net::OSC::Types;
 
 has ActionTuple @!dispatcher;
+has Bool        $.is64bit = True;
 
 #= Interface for examining actions for managing messages
 multi method actions( --> Seq) {
@@ -29,6 +30,7 @@ method send(OSCPath $path, *%args) {
   self.transmit-message(Net::OSC::Message.new(
     :$path
     :args( (%args<args>:exists and %args<args>.defined) ?? %args<args> !! () )
+    :is64bit($!is64bit)
   ))
 }
 
