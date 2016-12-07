@@ -49,7 +49,7 @@ my %pack-map =
 ;
 
 has OSCPath $.path        = '/';
-has Str     @!type-list   = Nil;
+has Str     @!type-list;
 has         @!args;
 has Bool    $.is64bit    = True;
 
@@ -62,10 +62,11 @@ submethod BUILD(:@!args, :$!path = '/', :$!is64bit = True)
    self!update-type-list(@!args);
 }
 
-method type-string()
+method type-string() returns Str
 #= Returns the current type string of this messages content.
 {
-  @!type-list.join: '';
+  return @!type-list.join: '' if @!type-list.elems > 0;
+  ''
 }
 
 method pick-osc-type($arg)
@@ -77,7 +78,7 @@ method pick-osc-type($arg)
     return $type-map{$arg.WHAT.perl};
   }
   else {
-    die "Unable to map $arg of type { $arg.perl } to OSC type!";
+    die "Unable to map $arg of type { $arg.WHAT.perl } to OSC type!";
   }
 }
 
@@ -114,7 +115,7 @@ method type-map()
   ($!is64bit ?? %type-map64 !! %type-map32).pairs;
 }
 
-method package() returns Buf
+method package() returns Blob
 #= Returns a Buf of the packed OSC message
 {
     self.pack-string($!path)
@@ -124,6 +125,8 @@ method package() returns Buf
 
 #= Map OSC arg types to a packing routine
 method !pack-args() returns Blob {
+  return Blob.new unless @!args.elems > 0;
+
   [~] gather for @!args Z @!type-list -> ($arg, $type) {
     #say "Packing '$arg' of OSC type '$type' with pattern '%pack-map{$type}'";
 
@@ -149,7 +152,7 @@ method !pack-args() returns Blob {
 }
 
 #returns a new Message object
-method unpackage(Buf $packed-osc)
+method unpackage(Buf $packed-osc) returns Net::OSC::Message
 #= Returns an Net::OSC::Message from a Buf where the content of the Buf is an OSC message
 {
   #say "Unpacking message of {$packed-osc.elems} byte(s):";
@@ -216,7 +219,7 @@ method unpackage(Buf $packed-osc)
     }
   }
 
-  self.bless(
+  Net::OSC::Message.new(
     :$path,
     :@args
   );

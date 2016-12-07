@@ -30,7 +30,7 @@ class TestServer does Net::OSC::Server {
   }
 
   #= Transmit an OSC message
-  method !transmit-message(Net::OSC::Message $message) {
+  multi method transmit-message(Net::OSC::Message:D $message) {
     $!events.emit: $message
   }
 
@@ -45,10 +45,12 @@ my TestServer $server .= new(
 );
 
 # Should not execute action, no tests executed
-$server.send("/not-test", "bla");
+$server.send("/not-test", :args<foo bar>);
 $server.send("/also/not-test");
 
 # Should execute action and pass tests
-$server.send("/test", 1);
+$server.send("/test", :args(1, ));
+
+sleep 0.5;
 
 $server.close;

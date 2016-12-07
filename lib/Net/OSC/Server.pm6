@@ -5,7 +5,6 @@ use Net::OSC::Message;
 use Net::OSC::Types;
 
 has ActionTuple @!dispatcher;
-has int $!port;
 
 #= Interface for examining actions for managing messages
 multi method actions( --> Seq) {
@@ -26,10 +25,10 @@ method add-actions(*@actions) {
 }
 
 #= Send and OSC message
-method send(OSCPath $path, *@args) {
-  self!transmit-message(Net::OSC::Message.new(
+method send(OSCPath $path, *%args) {
+  self.transmit-message(Net::OSC::Message.new(
     :$path
-    :@args
+    :args( (%args<args>:exists and %args<args>.defined) ?? %args<args> !! () )
   ))
 }
 
@@ -59,4 +58,4 @@ method !listen() { ... }
 method !on-close { ... }
 
 #= Transmit an OSC message
-method !transmit-message(Net::OSC::Message $message) { ... }
+multi method transmit-message(Net::OSC::Message:D $message) { ... }
