@@ -124,10 +124,10 @@ method package() returns Blob
 }
 
 #= Map OSC arg types to a packing routine
-method !pack-args() returns Blob {
-  return Blob.new unless @!args.elems > 0;
+method !pack-args() returns Buf {
+  return Buf.new unless @!args.elems > 0;
 
-  [~] gather for @!args Z @!type-list -> ($arg, $type) {
+  Buf.new( (gather for @!args Z @!type-list -> ($arg, $type) {
     #say "Packing '$arg' of OSC type '$type' with pattern '%pack-map{$type}'";
 
     given %pack-map{$type} {
@@ -148,7 +148,7 @@ method !pack-args() returns Blob {
       }
     }
 
-  }
+  }).map( { |$_[0..*] } ) )
 }
 
 #returns a new Message object
