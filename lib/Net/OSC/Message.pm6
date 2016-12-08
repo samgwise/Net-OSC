@@ -7,9 +7,15 @@ use Net::OSC::Types;
 
 =head1 NAME
 
-Net::OSC::Message - Impliments OSC message packing and unpacking
+Net::OSC::Message - Implements OSC message packing and unpacking
 
 =head1 METHODS
+
+=begin code
+method new(:$path = '/', :@args, :$!is64bit = True)
+=end code
+Set :is64bit to false to force messages to be packed to 32bit types
+ this option may be required to talk to some versions of Max and other old OSC implementations.
 
 =end pod
 
@@ -53,24 +59,21 @@ has Str     @!type-list;
 has         @!args;
 has Bool    $.is64bit    = True;
 
-submethod BUILD(:@!args, :$!path = '/', :$!is64bit = True)
-#= Constructs an Net::OSC::Message
-#= :args is required even if it is simply an empty list
-#= Set :is64bit to false to force messages to be packed to 32bit types
-#=  this option may be required to talk to some versions of Max and other old OSC implimentations.
-{
+submethod BUILD(:@!args, :$!path = '/', :$!is64bit = True) {
    self!update-type-list(@!args);
 }
 
 method type-string() returns Str
 #= Returns the current type string of this messages content.
+#= See OSC types for possible values.
 {
   return @!type-list.join: '' if @!type-list.elems > 0;
   ''
 }
 
-method pick-osc-type($arg)
-#= Returns the character representing the OSC type $arg would be packed as by this Message object.
+method pick-osc-type($arg) returns Str
+#= Returns the character representing the OSC type $arg would be packed as
+#=  by this Message object.
 {
   #say "Choosing type for $arg of type {$arg.WHAT.perl}";
   my $type-map = $!is64bit ?? %type-map64 !! %type-map32;
@@ -88,8 +91,9 @@ method !update-type-list(*@args){
   }
 }
 
-method args(*@new-args)
-#= adds any argumetns as args to the object and returns the current message args list.
+method args(*@new-args) returns Seq
+#= Adds any arguments as args to the object and returns the current message arguments.
+#= The OSC type of the argument will be determined according the the current OSC types map.
 {
   if @new-args {
     @!args.push(|@new-args);
@@ -103,28 +107,32 @@ method args(*@new-args)
 
 method set-args(*@new-args)
 #= Clears the message args lists and sets it to the arguments provided.
+#= The OSC type of the argument will be determined according the the current OSC types map.
 {
   @!args = ();
   @!type-list = ();
   self.args(@new-args) if @new-args;
 }
 
-method type-map()
+method type-map() returns Seq
 #= Returns the current OSC type map of the message.
+#= This will change depending on the is64bit flag.
 {
   ($!is64bit ?? %type-map64 !! %type-map32).pairs;
 }
 
 method package() returns Blob
-#= Returns a Buf of the packed OSC message
+#= Returns a Buf of the packed OSC message.
+#= See unpackage to turn a Buf into a Message object.
 {
     self.pack-string($!path)
     ~ self.pack-string(",{ self.type-string() }")
     ~ self!pack-args();
 }
 
+method !pack-args() returns Buf
 #= Map OSC arg types to a packing routine
-method !pack-args() returns Buf {
+{
   return Buf.new unless @!args.elems > 0;
 
   Buf.new( (gather for @!args Z @!type-list -> ($arg, $type) {
@@ -153,7 +161,8 @@ method !pack-args() returns Buf {
 
 #returns a new Message object
 method unpackage(Buf $packed-osc) returns Net::OSC::Message
-#= Returns an Net::OSC::Message from a Buf where the content of the Buf is an OSC message
+#= Returns an Net::OSC::Message from a Buf where the content of the Buf is an OSC message.
+#= Will die on unhandled OSC type and behaviour is currently undefined on non OSC message Bufs.
 {
   #say "Unpacking message of {$packed-osc.elems} byte(s):";
   #say $packed-osc.map( { sprintf('%4s', $_.base(16)) } ).rotor(8, :partial).join("\n");
