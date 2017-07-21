@@ -2,7 +2,7 @@
 
 use v6.c;
 use lib "lib";
-use Net::OSC::TCP;
+use Net::OSC::Transport::TCP;
 use Net::OSC::Message;
 
 sub MAIN(:$use-slip = True) {
