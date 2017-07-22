@@ -2,7 +2,7 @@
 use v6.c;
 use Test;
 
-plan 9;
+plan 11;
 
 use-ok 'Net::OSC::Transport::TCP';
 use Net::OSC::Transport::TCP;
@@ -24,8 +24,10 @@ my $slip-test = start {
   send-slip($client, $t); # maybe we should catch an exception here?
   my $connection = $server.accept();
   ok $connection, 'Server accepted connection';
-  my $m = send-slip($connection, $t);
-  ok ($t.args Z $m.args).map({ $_[0] =~= $_[1] }).all, 'Received message matches sent message';
+  my $m = recv-slip($connection);
+
+  # XXX why does this not seem to run?
+  ok ($t.args Z $m.args).map({ $_[0] == $_[1] }).all, 'Received message matches sent message';
 };
 await Promise.anyof($slip-test, Promise.in(1).then({ flunk "FAILURE: Timed out!"; }));
 ok $slip-test, 'Passing an OSC message with SLIP+TCP worked.';
@@ -38,7 +40,9 @@ my $lp-test = start {
   send-lp($client, $t); # maybe we should catch an exception here?
   my $connection = $server.accept();
   ok $connection, 'Server accepted connection';
-  my $m = send-lp($connection, $t);
+  my $m = recv-lp($connection);
+
+  # XXX why does this not seem to run?
   ok ($t.args Z $m.args).map({ $_[0] =~= $_[1] }).all, 'Received message matches sent message';
 };
 await Promise.anyof($lp-test, Promise.in(1).then({ flunk "FAILURE: Timed out!"; }));
