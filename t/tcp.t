@@ -2,7 +2,7 @@
 use v6.c;
 use Test;
 
-plan 3;
+plan 9;
 
 use-ok 'Net::OSC::Transport::TCP';
 use Net::OSC::Transport::TCP;
@@ -16,40 +16,30 @@ my Net::OSC::Message $t .= new(
   :is64bit(False)
 );
 
-{
-  # promise that sends a message
-  my $slip-sender = start {
-    my $tcp-client = IO::Socket::INET.new(:host<127.0.0.1>, :port(55556));
-    diag 'waiting to send....';
-    sleep 0.5;
-    send-slip($tcp-client, $t);
-  };
+my $slip-test = start {
+  my $server = IO::Socket::INET.new(:localhost<127.0.0.1>, :localport(55555), :listen(True));
+  ok $server, 'Created server';
+  my $client = IO::Socket::INET.new(:host<127.0.0.1>, :port(55555));
+  ok $client, 'Created client';
+  send-slip($client, $t); # maybe we should catch an exception here?
+  my $connection = $server.accept();
+  ok $connection, 'Server accepted connection';
+  my $m = send-slip($connection, $t);
+  ok ($t.args Z $m.args).map({ $_[0] =~= $_[1] }).all, 'Received message matches sent message';
+};
+await Promise.anyof($slip-test, Promise.in(1).then({ flunk "FAILURE: Timed out!"; }));
+ok $slip-test, 'Passing an OSC message with SLIP+TCP worked.';
 
-  diag 'creating TCP listener...';
-  my $tcp-server = IO::Socket::INET.new(:localhost<127.0.0.1>, :localport(55556), :listen(True));
-  my $connection = $tcp-server.accept();
-  my $m = recv-slip($connection);
-  await $slip-sender;
-
-  is $t.args[0], $m.args[0], "Slip TCP message matches presend message";
-}
-
-#sleep 0.5;
-
-{
-  # promise that sends a message
-  my $lp-sender = start {
-    my $tcp-client = IO::Socket::INET.new(:host<127.0.0.1>, :port(55555));
-    diag 'waiting to send....';
-    sleep 0.5;
-    send-lp($tcp-client, $t);
-  };
-
-  diag 'creating TCP listener...';
-  my $tcp-server = IO::Socket::INET.new(:localhost<127.0.0.1>, :localport(55555), :listen(True));
-  my $connection = $tcp-server.accept();
-  my $m = recv-lp($connection);
-  await $lp-sender;
-
-  is $t.args[0], $m.args[0], "Length-prefixed TCP message matches presend message";
-}
+my $lp-test = start {
+  my $server = IO::Socket::INET.new(:localhost<127.0.0.1>, :localport(55556), :listen(True));
+  ok $server, 'Created server';
+  my $client = IO::Socket::INET.new(:host<127.0.0.1>, :port(55556));
+  ok $client, 'Created client';
+  send-lp($client, $t); # maybe we should catch an exception here?
+  my $connection = $server.accept();
+  ok $connection, 'Server accepted connection';
+  my $m = send-lp($connection, $t);
+  ok ($t.args Z $m.args).map({ $_[0] =~= $_[1] }).all, 'Received message matches sent message';
+};
+await Promise.anyof($lp-test, Promise.in(1).then({ flunk "FAILURE: Timed out!"; }));
+ok $lp-test, 'Passing an OSC message with LP+TCP worked.';
