@@ -2,12 +2,12 @@
 use v6.c;
 use Test;
 
-# plan 3;
+plan 3;
 
 use-ok 'Net::OSC::Transport::TCP';
 use Net::OSC::Transport::TCP;
 
-use-ok 'Net::OSC::Message';
+#use-ok 'Net::OSC::Message';
 use Net::OSC::Message;
 
 my Net::OSC::Message $t .= new(
@@ -15,14 +15,6 @@ my Net::OSC::Message $t .= new(
   :args(0, 2.3456789, 'abc')
   :is64bit(False)
 );
-
-todo 'this hangs; it is broken';
-pass;
-exit 0;
-
-#
-# XXX FIXME: started this attempt at a test, but i'm doing something wrong --kybr
-#
 
 {
   # promise that sends a message
@@ -39,10 +31,10 @@ exit 0;
   my $m = recv-slip($connection);
   await $slip-sender;
 
-  #ok $t.args[0] == $m.args[0];
+  is $t.args[0], $m.args[0], "Slip TCP message matches presend message";
 }
 
-sleep 0.5;
+#sleep 0.5;
 
 {
   # promise that sends a message
@@ -59,5 +51,5 @@ sleep 0.5;
   my $m = recv-lp($connection);
   await $lp-sender;
 
-  #ok $t.args[0] == $m.args[0];
+  is $t.args[0], $m.args[0], "Length-prefixed TCP message matches presend message";
 }
