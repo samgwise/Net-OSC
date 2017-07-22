@@ -1,5 +1,5 @@
 use v6;
-unit module Net::OSC::TCP;
+unit module Net::OSC::Transport::TCP;
 use Net::OSC::Message;
 
 #
