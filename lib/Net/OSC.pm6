@@ -6,9 +6,9 @@ use Net::OSC::Types;
 
 =begin pod
 
-=head1 NAME
+=head1 Net::OSC
 
-Net::OSC - Open Sound Control for Perl6
+Open Sound Control for Perl6
 
 Use the Net::OSC module to communicate with OSC applications and devices!
 
@@ -93,6 +93,9 @@ See reference section below for usage details.
 
 Sam Gillespie <samgwise@gmail.com>
 
+=head1 CONTRIBUTORS
+  Net::OSC::Transport::TCP contributed by Karl Yerkes <karl.yerkes@gmail.com>.
+
 =head1 COPYRIGHT AND LICENSE
 
 Copyright 2016 Sam Gillespie
@@ -101,7 +104,7 @@ This library is free software; you can redistribute it and/or modify it under th
 
 =head1 Reference
 
-=head2 Net::OSC subroutines 
+=head2 Net::OSC subroutines
 
 =end pod
 

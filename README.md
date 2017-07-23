@@ -1,10 +1,9 @@
 [![Build Status](https://travis-ci.org/samgwise/Net-OSC.svg?branch=master)](https://travis-ci.org/samgwise/Net-OSC)
+ 
+Net::OSC
+========
 
-
-NAME
-====
-
-Net::OSC - Open Sound Control for Perl6
+Open Sound Control for Perl6
 
 Use the Net::OSC module to communicate with OSC applications and devices!
 
@@ -103,6 +102,9 @@ AUTHOR
 
 Sam Gillespie <samgwise@gmail.com>
 
+CONTRIBUTORS Net::OSC::Transport::TCP contributed by Karl Yerkes <karl.yerkes@gmail.com>.
+=========================================================================================
+
 COPYRIGHT AND LICENSE
 =====================
 
@@ -113,8 +115,8 @@ This library is free software; you can redistribute it and/or modify it under th
 Reference
 =========
 
-Net::OSC subroutines 
----------------------
+Net::OSC subroutines
+--------------------
 
 ### sub action
 
@@ -137,8 +139,7 @@ sub action(
 ```
 
 Creates an action tuple for use in a server's actions list. The string must be a valid OSC path (currently we only check for a beginning '/' character). In the future this subroutine may translate OSC path meta characters to Perl6 regular expressions.
-
-
+ 
 NAME
 ====
 
@@ -214,8 +215,7 @@ method unpackage(
 ```
 
 Returns a Net::OSC::Message from a Buf where the content of the Buf is an OSC message. Will die on unhandled OSC type and behaviour is currently undefined on non OSC message Bufs.
-
-
+ 
 NAME
 ====
 
@@ -243,8 +243,7 @@ method unpackage(
 ```
 
 Unapackages a Blob into a bundle object. The blob must begin with #bundle0x00 as defined by the OSC spec.
-
-
+ 
 NAME
 ====
 
@@ -314,8 +313,7 @@ method transmit-message(
 ```
 
 Transmit an OSC message. This method must be implemented by consuming classes. implementations may add additional signatures. Use this method to send a specific OSC message object instead of send (which creates one for you).
-
-
+ 
 NAME
 ====
 
@@ -368,3 +366,55 @@ method transmit-message(
 ```
 
 Transmit an OSC message to a specified host and port. This implementation sends the provided message to the specified address and port.
+ 
+Net::OSC::Transport::TCP
+========================
+
+TCP transport routines for Net::OSC.
+
+There are a variety of methods for transmitting OSC over TCP. This module provides routines sending your OSC messages with Length-prefixed message framing and SLIP message framing. See the individual subroutine descriptions for more details.
+
+subroutines
+-----------
+
+### sub send-lp
+
+```
+sub send-lp(
+    IO::Socket::INET $socket, 
+    Net::OSC::Message $message
+) returns Mu
+```
+
+Sends an OSC message with Length-prefixed framing. This is known to be used in SuperCollider.
+
+### sub recv-lp
+
+```
+sub recv-lp(
+    IO::Socket::INET $socket
+) returns Net::OSC::Message
+```
+
+A subroutine for receiving Length-prefixed messages. This routine blocks until it has recieved a complete message.
+
+### sub send-slip
+
+```
+sub send-slip(
+    IO::Socket::INET $socket, 
+    Net::OSC::Message $message
+) returns Mu
+```
+
+Sends an OSC message with SLIP framing. This is known to be used in PureData.
+
+### sub recv-slip
+
+```
+sub recv-slip(
+    IO::Socket::INET $socket
+) returns Net::OSC::Message
+```
+
+A subroutine for receiving SLIP messages. This routine blocks until it has recieved a complete message.
