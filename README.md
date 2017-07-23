@@ -102,8 +102,10 @@ AUTHOR
 
 Sam Gillespie <samgwise@gmail.com>
 
-CONTRIBUTORS Net::OSC::Transport::TCP contributed by Karl Yerkes <karl.yerkes@gmail.com>.
-=========================================================================================
+CONTRIBUTORS
+============
+
+    Net::OSC::Transport::TCP contributed by Karl Yerkes <karl.yerkes@gmail.com>.
 
 COPYRIGHT AND LICENSE
 =====================

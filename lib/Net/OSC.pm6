@@ -94,6 +94,7 @@ See reference section below for usage details.
 Sam Gillespie <samgwise@gmail.com>
 
 =head1 CONTRIBUTORS
+
   Net::OSC::Transport::TCP contributed by Karl Yerkes <karl.yerkes@gmail.com>.
 
 =head1 COPYRIGHT AND LICENSE
