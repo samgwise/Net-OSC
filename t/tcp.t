@@ -12,7 +12,7 @@ use Net::OSC::Message;
 
 my Net::OSC::Message $t .= new(
   :path</a>
-  :args(0, 2.3456789, 'abc')
+  :args(0, 2.5, 'abc')
   :is64bit(False)
 );
 
@@ -26,8 +26,9 @@ my $slip-test = start {
   ok $connection, 'Server accepted connection';
   my $m = recv-slip($connection);
 
-  # XXX why does this not seem to run?
-  ok ($t.args Z $m.args).map({ $_[0] == $_[1] }).all, 'Received message matches sent message';
+  is $t.args, $m.args, 'Received message matches sent message';
+
+  CATCH { warn .Str }
 };
 await Promise.anyof($slip-test, Promise.in(1).then({ flunk "FAILURE: Timed out!"; }));
 ok $slip-test, 'Passing an OSC message with SLIP+TCP worked.';
@@ -42,8 +43,9 @@ my $lp-test = start {
   ok $connection, 'Server accepted connection';
   my $m = recv-lp($connection);
 
-  # XXX why does this not seem to run?
-  ok ($t.args Z $m.args).map({ $_[0] =~= $_[1] }).all, 'Received message matches sent message';
+  is $t.args, $m.args, 'Received message matches sent message';
+
+  CATCH { warn .Str }
 };
 await Promise.anyof($lp-test, Promise.in(1).then({ flunk "FAILURE: Timed out!"; }));
 ok $lp-test, 'Passing an OSC message with LP+TCP worked.';
