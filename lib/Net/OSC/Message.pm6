@@ -20,6 +20,7 @@ Set :is64bit to false to force messages to be packed to 32bit types
 =end pod
 
 use Numeric::Pack :ALL;
+use experimental :pack;
 
 my %type-map32 =
   Int.^name,    'i',
