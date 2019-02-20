@@ -30,9 +30,8 @@ unit class Net::OSC::Server::UDP does Net::OSC::Server;
 use Net::OSC::Message;
 use Net::OSC::Types;
 
-has IO::Socket::Async $!udp-listener;
+has IO::Socket::Async $!udp;
 has Tap               $!listener;
-has IO::Socket::Async $!udp-sender;
 has Str               $.listening-address;
 has Int               $.listening-port;
 has Str               $.send-to-address is rw;
@@ -74,10 +73,9 @@ method send(OSCPath $path, *%params)
 method !listen()
 #= Start listening for OSC messages
 {
-  $!udp-listener  .= bind-udp($!listening-address, $!listening-port);
-  $!udp-sender    .= udp;
+  $!udp  .= bind-udp($!listening-address, $!listening-port);
 
-  $!listener = $!udp-listener.Supply(:bin).grep( *.elems > 0 ).tap: -> $buf {
+  $!listener = $!udp.Supply(:bin).grep( *.elems > 0 ).tap: -> $buf {
     self!on-message-recieved: Net::OSC::Message.unpackage($buf)
   }
 }
@@ -92,12 +90,12 @@ multi method transmit-message(Net::OSC::Message:D $message)
 #= Transmit an OSC message.
 #= This implementation will send the provided message to the server's send-to-* attributes.
 {
-  await $!udp-sender.write-to($!send-to-address, $!send-to-port, $message.package);
+  await $!udp.write-to($!send-to-address, $!send-to-port, $message.package);
 }
 
 multi method transmit-message(Net::OSC::Message:D $message, Str $address, Int $port)
 #= Transmit an OSC message to a specified host and port.
 #= This implementation sends the provided message to the specified address and port.
 {
-  await $!udp-sender.write-to($address, $port, $message.package);
+  await $!udp.write-to($address, $port, $message.package);
 }
