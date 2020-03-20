@@ -80,7 +80,6 @@ See reference section below for usage details.
 
 =head1 TODO
 
-  =item Net::OSC::Bundle
   =item Net::OSC::Server::TCP
   =item Additional OSC types
 

@@ -78,8 +78,6 @@ See reference section below for usage details.
 TODO
 ====
 
-  * Net::OSC::Bundle
-
   * Net::OSC::Server::TCP
 
   * Additional OSC types
@@ -444,7 +442,7 @@ Provides helper classes and subsets for dealing with OSC communications.
 
 Type wrappers are provided for OSC 1.0 standard types.
 
-class -> ;; $_? is raw { #`(Block|170103328) ... }
+class -> ;; $_? is raw { #`(Block|149465208) ... }
 --------------------------------------------------
 
 Tag Str values as OSC type 's'. Can be created via the osc-str function.
