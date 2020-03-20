@@ -21,6 +21,9 @@ Set :is64bit to false to force messages to be packed to 32bit types
 
 use Numeric::Pack :ALL;
 
+constant width32 = 4;
+constant width64 = 8;
+
 my %type-map32 =
   Int.^name,    'i',
   IntStr.^name, 'i',
@@ -30,6 +33,8 @@ my %type-map32 =
   FatRat.^name, 'f',
   Str.^name,    's',
   Blob.^name,   'b',
+  Buf.^name,    'b',
+  |%Net::OSC::Types::osc-wrapper-type-map,
 ;
 my %type-map64 =
   Int.^name,    'i',
@@ -40,6 +45,8 @@ my %type-map64 =
   FatRat.^name, 'd',
   Str.^name,    's',
   Blob.^name,   'b',
+  Buf.^name,    'b',
+  |%Net::OSC::Types::osc-wrapper-type-map,
 ;
 
 has OSCPath $.path        = '/';
@@ -49,6 +56,23 @@ has Bool    $.is64bit    = True;
 
 submethod BUILD(:@!args, :$!path = '/', :$!is64bit = True) {
    self!update-type-list(@!args);
+}
+
+#
+# Constructor functions
+#
+sub osc-message(*@args --> Net::OSC::Message) is export {
+    #= Function for creating a new OSC Message.
+    #= The list of arguments is infered according to the 32bit type map, since it is the most widely accepted.
+    #= To define specific types (such as Doubles and Longs) use OSCType wrappers from Net::OSC::Types.
+    Net::OSC::Message.new(:@args)
+}
+
+sub osc-decode(Blob:D $buffer --> Net::OSC::Message) is export {
+    #= Function for unpacking an OSC message.
+    #= Accepts a defined buffer and returns an Net::OSC::Message.
+    #= Decoding errors are thrown as exceptions.
+    Net::OSC::Message.unpackage($buffer)
 }
 
 method type-string() returns Str
@@ -62,6 +86,8 @@ method type-string() returns Str
 method pick-osc-type($arg) returns Str
 #= Returns the character representing the OSC type $arg would be packed as
 #=  by this Message object.
+#= If the argument is held in a wrapper from Net::OSC::Types then the wrapper's type will be used.
+#= Otherwise the type picker will try and infer a type according to the 32bit or 64 bit type map.
 {
   #say "Choosing type for $arg of type {$arg.WHAT.perl}";
   my $type-map = $!is64bit ?? %type-map64 !! %type-map32;
@@ -69,7 +95,7 @@ method pick-osc-type($arg) returns Str
     return $type-map{$arg.WHAT.perl};
   }
   else {
-    die "Unable to map $arg of type { $arg.WHAT.perl } to OSC type!";
+    die "Unable to map { try { $arg.Str } // $arg.gist } of type { $arg.WHAT.perl } to OSC type!";
   }
 }
 
@@ -128,16 +154,23 @@ method !pack-args() returns Buf
 
     given $type {
       when 'f' {
-        take pack-float($arg, :byte-order(big-endian));
+        take pack-float($arg.Rat, :byte-order(big-endian));
       }
       when 'd' {
-        take pack-double($arg, :byte-order(big-endian));
+        take pack-double($arg.Rat, :byte-order(big-endian));
       }
       when 'i' {
-        take pack-int32($arg, :byte-order(big-endian));
+        take pack-int32($arg.Int, :byte-order(big-endian));
+      }
+      when 'h' {
+        take pack-int64($arg.Int, :byte-order(big-endian));
       }
       when 's' {
-        take self.pack-string($arg);
+        take self.pack-string($arg.Str);
+      }
+      when 'b' {
+        # Remove the wrapper or just pass along the argument
+        take self.pack-blob: ($arg ~~ Net::OSC::Types::OSCType) ?? $arg.content !! $arg;
       }
       default {
         die "No type map defined for '$_' unable to add { $arg.gist } to OSC message.";
@@ -164,7 +197,7 @@ method unpackage(Buf $packed-osc) returns Net::OSC::Message
   #Closure for string parsing, operates on this scope of variables
   my $extract-string = sub {
     #say "Unpacking string";
-    $buffer-width = 4;
+    $buffer-width = width32;
     my $arg = '';
     my $chars;
     repeat {
@@ -177,7 +210,7 @@ method unpackage(Buf $packed-osc) returns Net::OSC::Message
         }
         $arg ~= $char;
       }
-    } while $buffer-width == 4 and $read-pointer < $packed-osc.elems;
+    } while $buffer-width == width32 and $read-pointer < $packed-osc.elems;
     #say "'$arg'";
     $arg;
   }
@@ -189,26 +222,37 @@ method unpackage(Buf $packed-osc) returns Net::OSC::Message
   while $read-pointer < $packed-osc.elems {
     given @types.shift -> $type {
       when $type eq 'f' {
-        $buffer-width = 4;
-        my $buf = $packed-osc.subbuf($read-pointer, $buffer-width);
+        my $buf = $packed-osc.subbuf($read-pointer, width32);
         @args.push: unpack-float $buf, :byte-order(big-endian);
-        $read-pointer += $buffer-width;
-      }
-      when $type eq 'd' {
-        $buffer-width = 8;
-        my $buf = $packed-osc.subbuf($read-pointer, $buffer-width);
-        @args.push: unpack-double $buf, :byte-order(big-endian);
-        $read-pointer += $buffer-width;
+        $read-pointer += width32;
       }
       when $type eq 'i' {
-        $buffer-width = 4;
-        my $buf = $packed-osc.subbuf($read-pointer, $buffer-width);
+        my $buf = $packed-osc.subbuf($read-pointer, width32);
 
         @args.push: unpack-int32 $buf, :byte-order(big-endian);
-        $read-pointer += $buffer-width;
+        $read-pointer += width32;
+      }
+      when $type eq 'd' {
+        my $buf = $packed-osc.subbuf($read-pointer, width64);
+        @args.push: unpack-double $buf, :byte-order(big-endian);
+        $read-pointer += width64;
+      }
+      when $type eq 'h' {
+        my $buf = $packed-osc.subbuf($read-pointer, width64);
+
+        @args.push: unpack-int64 $buf, :byte-order(big-endian);
+        $read-pointer += width64;
       }
       when $type eq 's' {
         @args.push: $extract-string.();
+      }
+      when $type eq 'b' {
+        # Read the size portion of the buffer
+        my $length = unpack-int32 $packed-osc.subbuf($read-pointer, width32), :byte-order(big-endian);
+        $read-pointer += width32;
+
+        @args.push: $packed-osc.subbuf($read-pointer, $length);
+        $read-pointer += $length;
       }
       default {
         die "Unhandled type '$type'";
@@ -242,4 +286,10 @@ method pack-string(Str $string) returns Blob
 #= Returns a Blob of a string packed for OSC transmission.
 {
   ( $string ~ ( "\0" x 4 - ( $string.chars % 4) ) ).encode('ISO-8859-1')
+}
+
+method pack-blob(Blob $buffer --> Blob)
+#= Formats a Blob into an OSC format blob.
+{
+    Blob.new(|pack-int32($buffer.elems, :byte-order(big-endian))[], |$buffer[])
 }

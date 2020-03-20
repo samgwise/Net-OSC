@@ -1,6 +1,6 @@
 use v6;
 
-unit module Net::OSC:ver<0.2.3>;
+unit module Net::OSC:ver<0.2.4>;
 use Net::OSC::Server::UDP;
 use Net::OSC::Types;
 
@@ -62,6 +62,7 @@ $server.close;
 Net::OSC distribution currently provides the following classes:
 
 =item Net::OSC
+=item Net::OSC::Types
 =item Net::OSC::Message
 =item Net::OSC::Server
 =item Net::OSC::Server::UDP
@@ -86,11 +87,12 @@ See reference section below for usage details.
 =head1 CHANGES
 
 =begin table
-      Compatibility updates for Numeric::Pack:ver<0.3.0>    | Better protabilty as we're now pure perl all the way down                 | 2018-06-20
-      Removed vestiges of the pack feature                  | Net::OSC wil not be effected by the experimental status of pack in Rakudo | 2018-06-19
-      TCP packing contributed                               | OSC messaged can be sent over TCP connections                             | 2017-07-23
-      Added Server role and UDP server                      | Sugar for sending, receiving and routing messages                         | 2016-12-08
-      Updated to use Numeric::Pack                          | Faster and better tested Buf packing                                      | 2016-08-30
+      Added type wrappers, helper functions and blobs       | Compliant with core OSC 1.0 type specifications                             | 2020-03-20
+      Compatibility updates for Numeric::Pack:ver<0.3.0>    | Better portabilty as we're now pure perl all the way down                   | 2018-06-20
+      Removed vestiges of the pack feature                  | Net::OSC will not be effected by the experimental status of pack in Rakudo  | 2018-06-19
+      TCP packing contributed                               | OSC messages can be sent over TCP connections                               | 2017-07-23
+      Added Server role and UDP server                      | Sugar for sending, receiving and routing messages                           | 2016-12-08
+      Updated to use Numeric::Pack                          | Faster and better tested Buf packing                                        | 2016-08-30
 =end table
 
 =head1 AUTHOR

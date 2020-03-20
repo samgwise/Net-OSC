@@ -4,11 +4,11 @@
   ],
   "build-depends" : [ ],
   "depends" : [
-    "Numeric::Pack"
+    "Numeric::Pack<0.3.0+>"
   ],
   "description" : "Open Sound Control for Perl6",
   "license" : "Artistic-2.0",
-  "name" : "Net::OSC",
+  "name" : "Net::Osc",
   "perl" : "6.c",
   "provides" : {
     "Net::OSC" : "lib/Net/OSC.pm6",

@@ -55,6 +55,8 @@ Net::OSC distribution currently provides the following classes:
 
   * Net::OSC
 
+  * Net::OSC::Types
+
   * Net::OSC::Message
 
   * Net::OSC::Server
@@ -87,7 +89,7 @@ CHANGES
 
 <table class="pod-table">
 <tbody>
-<tr> <td>Compatibility updates for Numeric::Pack:ver&lt;0.3.0&gt;</td> <td>Better protabilty as we&#39;re now pure perl all the way down</td> <td>2018-06-20</td> </tr> <tr> <td>Removed vestiges of the pack feature</td> <td>Net::OSC wil not be effected by the experimental status of pack in Rakudo</td> <td>2018-06-19</td> </tr> <tr> <td>TCP packing contributed</td> <td>OSC messaged can be sent over TCP connections</td> <td>2017-07-23</td> </tr> <tr> <td>Added Server role and UDP server</td> <td>Sugar for sending, receiving and routing messages</td> <td>2016-12-08</td> </tr> <tr> <td>Updated to use Numeric::Pack</td> <td>Faster and better tested Buf packing</td> <td>2016-08-30</td> </tr>
+<tr> <td>Added type wrappers, helper functions and blobs</td> <td>Compliant with core OSC 1.0 type specifications</td> <td>2020-03-20</td> </tr> <tr> <td>Compatibility updates for Numeric::Pack:ver&lt;0.3.0&gt;</td> <td>Better portabilty as we&#39;re now pure perl all the way down</td> <td>2018-06-20</td> </tr> <tr> <td>Removed vestiges of the pack feature</td> <td>Net::OSC will not be effected by the experimental status of pack in Rakudo</td> <td>2018-06-19</td> </tr> <tr> <td>TCP packing contributed</td> <td>OSC messages can be sent over TCP connections</td> <td>2017-07-23</td> </tr> <tr> <td>Added Server role and UDP server</td> <td>Sugar for sending, receiving and routing messages</td> <td>2016-12-08</td> </tr> <tr> <td>Updated to use Numeric::Pack</td> <td>Faster and better tested Buf packing</td> <td>2016-08-30</td> </tr>
 </tbody>
 </table>
 
@@ -176,6 +178,26 @@ METHODS
 
 Set :is64bit to false to force messages to be packed to 32bit types this option may be required to talk to some versions of Max and other old OSC implementations.
 
+### sub osc-message
+
+```perl6
+sub osc-message(
+    *@args
+) returns Net::OSC::Message
+```
+
+Function for creating a new OSC Message. The list of arguments is infered according to the 32bit type map, since it is the most widely accepted. To define specific types (such as Doubles and Longs) use OSCType wrappers from Net::OSC::Types.
+
+### sub osc-decode
+
+```perl6
+sub osc-decode(
+    Blob:D $buffer
+) returns Net::OSC::Message
+```
+
+Function for unpacking an OSC message. Accepts a defined buffer and returns an Net::OSC::Message. Decoding errors are thrown as exceptions.
+
 ### method type-string
 
 ```perl6
@@ -192,7 +214,7 @@ method pick-osc-type(
 ) returns Str
 ```
 
-Returns the character representing the OSC type $arg would be packed as by this Message object.
+Returns the character representing the OSC type $arg would be packed as by this Message object. If the argument is held in a wrapper from Net::OSC::Types then the wrapper's type will be used. Otherwise the type picker will try and infer a type according to the 32bit or 64 bit type map.
 
 ### method args
 
@@ -415,5 +437,55 @@ sub recv-slip(
 
 A subroutine for receiving SLIP messages. This routine blocks until it has recieved a complete message.
 
- 
+ Net::OSC::Types
+===============
+
+Provides helper classes and subsets for dealing with OSC communications.
+
+Type wrappers are provided for OSC 1.0 standard types.
+
+class -> ;; $_? is raw { #`(Block|170103328) ... }
+--------------------------------------------------
+
+Tag Str values as OSC type 's'. Can be created via the osc-str function.
+
+### method type-code
+
+```perl6
+method type-code() returns Str
+```
+
+Tag Blob values as OSC type 'b'. Can be created via the osc-blob function.
+
+### method type-code
+
+```perl6
+method type-code() returns Str
+```
+
+Tag Int values as OSC type 'i'. Can be created via the osc-int32 function.
+
+### method type-code
+
+```perl6
+method type-code() returns Str
+```
+
+Tag Int values as OSC type 'h'. Can be created via the osc-int64 function.
+
+### method type-code
+
+```perl6
+method type-code() returns Str
+```
+
+Tag Rat values as OSC type 'f'. Can be created via the osc-float function.
+
+### method type-code
+
+```perl6
+method type-code() returns Str
+```
+
+Tag Rat values as OSC type 'd'. Can be created via the osc-double function.
 

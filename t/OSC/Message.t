@@ -2,10 +2,11 @@
 use v6;
 use Test;
 
-plan 19;
+plan 25;
 
 use-ok 'Net::OSC::Message';
 use Net::OSC::Message;
+use Net::OSC::Types;
 
 
 #diag Net::OSC::Message.^methods.map({ $_.perl }).join: "\n";
@@ -63,3 +64,17 @@ lives-ok {
 }, "Instantiate 32bit message";
 
 is $message32.type-string, 'sif', "Rat is type f in 32bit message";
+
+#
+# Type wrapper tests
+#
+
+is osc-message(osc-str('Foo')).package.&osc-decode.args.head, 'Foo', "Round trip for OSCType OSCString";
+
+is osc-message(osc-blob('Foo'.encode)).package.&osc-decode.args.head.decode, 'Foo', "Round trip for OSCType OSCBlob";
+
+is osc-message(osc-int32(0xfffffff)).package.&osc-decode.args.head, 0xfffffff, "Round trip for OSCType OSCInt32";
+is osc-message(osc-int64(0xffffffff_fffffff)).package.&osc-decode.args.head, 0xffffffff_fffffff, "Round trip for OSCType OSCInt64";
+
+is osc-message(osc-float(22.2)).package.&osc-decode.args.head, 22.2, "Round trip for OSCType OSCFloat32";
+is osc-message(osc-double(88888888.8)).package.&osc-decode.args.head, 88888888.8, "Round trip for OSCType OSCFloat64";
