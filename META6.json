@@ -26,6 +26,8 @@
     "Open Sound Control",
     "Communication"
   ],
-  "test-depends": [],
+  "test-depends": [
+    "Test::Util::ServerPort:ver<0.0.4+>"
+  ],
   "version": "0.2.4"
 }
