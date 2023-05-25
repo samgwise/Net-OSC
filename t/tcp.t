@@ -16,10 +16,13 @@ my Net::OSC::Message $t .= new(
   :is64bit(False)
 );
 
+use Test::Util::ServerPort;
+
 my $slip-test = start {
-  my $server = IO::Socket::INET.new(:localhost<127.0.0.1>, :localport(55555), :listen(True));
+  my $port = get-unused-port();
+  my $server = IO::Socket::INET.new(:localhost<127.0.0.1>, :localport($port), :listen(True));
   ok $server, 'Created server';
-  my $client = IO::Socket::INET.new(:host<127.0.0.1>, :port(55555));
+  my $client = IO::Socket::INET.new(:host<127.0.0.1>, :port($port));
   ok $client, 'Created client';
   send-slip($client, $t); # maybe we should catch an exception here?
   my $connection = $server.accept();
@@ -34,9 +37,10 @@ await Promise.anyof($slip-test, Promise.in(1).then({ flunk "FAILURE: Timed out!"
 ok $slip-test, 'Passing an OSC message with SLIP+TCP worked.';
 
 my $lp-test = start {
-  my $server = IO::Socket::INET.new(:localhost<127.0.0.1>, :localport(55556), :listen(True));
+  my $port = get-unused-port();
+  my $server = IO::Socket::INET.new(:localhost<127.0.0.1>, :localport($port), :listen(True));
   ok $server, 'Created server';
-  my $client = IO::Socket::INET.new(:host<127.0.0.1>, :port(55556));
+  my $client = IO::Socket::INET.new(:host<127.0.0.1>, :port($port));
   ok $client, 'Created client';
   send-lp($client, $t); # maybe we should catch an exception here?
   my $connection = $server.accept();
